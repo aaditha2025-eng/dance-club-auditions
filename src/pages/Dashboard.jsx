@@ -5,8 +5,9 @@ import { importFromExcel, exportToExcel } from '../utils/excel';
 import { Upload, Download, Plus, Search, Flag, ClipboardList, Trash2, CheckSquare } from 'lucide-react';
 
 const Dashboard = () => {
-  const { students, importStudents, addStudent, currentUser, deleteStudents, clearData } = useAppContext();
-  const canManageStudents = currentUser?.role === 'Admin' || currentUser?.role === 'Faculty Coordinator';
+  const { students, importStudents, addStudent, currentUser, deleteStudents, clearData, facultyRoles, addFacultyRole, deleteFacultyRole } = useAppContext();
+  const isAdmin = currentUser?.role === 'Admin';
+  const canManageStudents = isAdmin || currentUser?.role?.startsWith('Faculty');
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
@@ -17,6 +18,9 @@ const Dashboard = () => {
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [newStudent, setNewStudent] = useState({ name: '', regNo: '', danceForm: '' });
+  
+  const [showFacultyModal, setShowFacultyModal] = useState(false);
+  const [newFacultyName, setNewFacultyName] = useState('');
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -46,11 +50,21 @@ const Dashboard = () => {
     setShowAddModal(false);
   };
 
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.chestNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.regNo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleAddFaculty = (e) => {
+    e.preventDefault();
+    if (newFacultyName.trim()) {
+      addFacultyRole(newFacultyName.trim());
+      setNewFacultyName('');
+    }
+  };
+
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          s.chestNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          s.regNo.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSlot = slot === 'All' ? true : s.chestNo.toUpperCase().endsWith(slot);
+    return matchesSearch && matchesSlot;
+  });
 
   const handleSelect = (e, id) => {
     e.stopPropagation();
@@ -101,16 +115,27 @@ const Dashboard = () => {
           </div>
         </div>
 
+        <div className="input-group" style={{ margin: 0, width: '150px' }}>
+          <label>Active Slot</label>
+          <select className="input-field" value={slot} onChange={(e) => setSlot(e.target.value)}>
+            <option value="All">All Slots</option>
+            {['A', 'B', 'C', 'D', 'E', 'F'].map(s => <option key={s} value={s}>Slot {s}</option>)}
+          </select>
+        </div>
+
         {canManageStudents && (
           <>
-            <div className="input-group" style={{ margin: 0, width: '150px' }}>
-              <label>Import Slot</label>
-              <select className="input-field" value={slot} onChange={(e) => setSlot(e.target.value)}>
-                {['A', 'B', 'C', 'D', 'E', 'F'].map(s => <option key={s} value={s}>Slot {s}</option>)}
-              </select>
-            </div>
-
-            <button onClick={() => fileInputRef.current?.click()} className="btn btn-glass" style={{ height: '46px' }}>
+            <button 
+              onClick={() => {
+                if (slot === 'All') {
+                  alert("Please select a specific slot (A, B, C...) before importing!");
+                  return;
+                }
+                fileInputRef.current?.click();
+              }} 
+              className="btn btn-glass" 
+              style={{ height: '46px' }}
+            >
               <Upload size={18} /> Import Excel
               <input 
                 type="file" 
@@ -121,7 +146,17 @@ const Dashboard = () => {
               />
             </button>
 
-            <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ height: '46px' }}>
+            <button 
+              onClick={() => {
+                if (slot === 'All') {
+                  alert("Please select a specific slot (A, B, C...) before adding a student manually!");
+                  return;
+                }
+                setShowAddModal(true);
+              }} 
+              className="btn btn-primary" 
+              style={{ height: '46px' }}
+            >
               <Plus size={18} /> Manual Add
             </button>
             
@@ -134,6 +169,12 @@ const Dashboard = () => {
             {students.length > 0 && (
               <button onClick={handleDeleteAll} className="btn" style={{ height: '46px', background: 'transparent', color: 'var(--text-secondary)', textDecoration: 'underline' }}>
                 Delete All
+              </button>
+            )}
+
+            {isAdmin && (
+              <button onClick={() => setShowFacultyModal(true)} className="btn btn-outline" style={{ height: '46px', marginLeft: 'auto', borderColor: 'var(--accent-red)', color: 'var(--accent-red)' }}>
+                Manage Faculty Logins
               </button>
             )}
           </>
@@ -168,6 +209,51 @@ const Dashboard = () => {
                 <button type="submit" className="btn btn-primary">Add Student</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showFacultyModal && isAdmin && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-panel animate-fade-in" style={{ padding: '2rem', width: '100%', maxWidth: '400px' }}>
+            <h2 className="mb-4 text-gradient">Manage Faculty Logins</h2>
+            <form onSubmit={handleAddFaculty} className="mb-4">
+              <div className="input-group">
+                <label>Add New Faculty Name</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    required 
+                    type="text" 
+                    className="input-field" 
+                    placeholder="e.g. John Smith" 
+                    value={newFacultyName} 
+                    onChange={e => setNewFacultyName(e.target.value)} 
+                    style={{ flex: 1 }}
+                  />
+                  <button type="submit" className="btn btn-primary"><Plus size={18} /></button>
+                </div>
+              </div>
+            </form>
+            
+            <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '1.5rem', background: 'var(--bg-primary)', padding: '1rem', borderRadius: '8px' }}>
+              {facultyRoles.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center' }}>No custom faculty logins found.</p>
+              ) : (
+                facultyRoles.map(role => (
+                  <div key={role.id} className="flex-between mb-2" style={{ paddingBottom: '0.5rem', borderBottom: '1px solid var(--glass-border)' }}>
+                    <span style={{ fontSize: '0.9rem' }}>{role.name}</span>
+                    <button 
+                      onClick={() => deleteFacultyRole(role.id)} 
+                      style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button type="button" className="btn btn-glass" style={{ width: '100%' }} onClick={() => setShowFacultyModal(false)}>Close</button>
           </div>
         </div>
       )}

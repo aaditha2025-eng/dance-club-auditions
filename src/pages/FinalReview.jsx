@@ -3,7 +3,7 @@ import { useAppContext, TEAMS } from '../context/AppContext';
 import { ChevronDown, ChevronUp, Flag } from 'lucide-react';
 
 const FinalReview = () => {
-  const { students, currentUser, allocateTeam } = useAppContext();
+  const { students, currentUser, allocateTeam, facultyRoles } = useAppContext();
   const [expandedId, setExpandedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -48,8 +48,10 @@ const FinalReview = () => {
           if (student.scores) {
             Object.values(student.scores).forEach(teamScores => {
               Object.values(teamScores).forEach(score => {
-                totalScore += score;
-                scoreCount++;
+                if (typeof score === 'number') {
+                  totalScore += score;
+                  scoreCount++;
+                }
               });
             });
           }
@@ -113,22 +115,38 @@ const FinalReview = () => {
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                    {TEAMS.map(team => {
+                    {[...TEAMS, ...facultyRoles.map(f => f.name)].map(team => {
                       const hasFeedback = student.scores?.[team] || student.comments?.[team];
                       if (!hasFeedback) return null;
 
                       let teamAvg = 'N/A';
+                      let extraForm = null;
                       if (student.scores?.[team]) {
-                        const scores = Object.values(student.scores[team]);
-                        teamAvg = (scores.reduce((a,b)=>a+b,0) / scores.length).toFixed(1);
+                        const scores = Object.entries(student.scores[team])
+                          .filter(([k, v]) => typeof v === 'number' && k !== 'ExtraFormName')
+                          .map(([k, v]) => v);
+                        if (scores.length > 0) {
+                          teamAvg = (scores.reduce((a,b)=>a+b,0) / scores.length).toFixed(1);
+                        }
+                        if (student.scores[team]['ExtraFormName']) {
+                          extraForm = { 
+                            name: student.scores[team]['ExtraFormName'], 
+                            score: student.scores[team]['ExtraFormScore'] 
+                          };
+                        }
                       }
 
                       return (
                         <div key={team} className="glass-panel" style={{ padding: '1rem' }}>
                           <div className="flex-between mb-2">
-                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{team}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{team.startsWith('Faculty - ') ? team.replace('Faculty - ', '') : team === 'Faculty Coordinator' ? 'Faculty' : team}</span>
                             <span className="badge badge-outline">Avg: {teamAvg}</span>
                           </div>
+                          {extraForm && (
+                            <div className="mb-2" style={{ fontSize: '0.85rem', color: 'var(--accent-red)' }}>
+                              <strong>Extra Form:</strong> {extraForm.name} ({extraForm.score || '-'} / 10)
+                            </div>
+                          )}
                           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
                             {student.comments?.[team] || <span style={{ fontStyle: 'italic' }}>No comments.</span>}
                           </p>

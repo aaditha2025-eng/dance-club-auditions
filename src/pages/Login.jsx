@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext, TEAMS } from '../context/AppContext';
 
 const Login = () => {
-  const { login } = useAppContext();
+  const { login, facultyRoles } = useAppContext();
   const navigate = useNavigate();
   const [role, setRole] = useState('');
 
@@ -15,7 +15,7 @@ const Login = () => {
     }
   };
 
-  const ROLES = ['Admin', ...TEAMS, 'Faculty Coordinator'];
+  const ROLES = ['Admin', ...TEAMS, ...facultyRoles.map(r => r.name)];
 
   return (
     <div className="flex-center" style={{ minHeight: '100vh', padding: '2rem' }}>

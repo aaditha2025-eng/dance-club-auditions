@@ -8,6 +8,8 @@ import StudentDetails from './pages/StudentDetails';
 import TeamsOverview from './pages/TeamsOverview';
 import ScoresOverview from './pages/ScoresOverview';
 import FinalReview from './pages/FinalReview';
+import MyTeam from './pages/MyTeam';
+import Logs from './pages/Logs';
 
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useAppContext();
@@ -50,6 +52,16 @@ const AppRoutes = () => {
         <Route path="/review" element={
           <ProtectedRoute>
             <FinalReview />
+          </ProtectedRoute>
+        } />
+        <Route path="/my-team" element={
+          <ProtectedRoute>
+            <MyTeam />
+          </ProtectedRoute>
+        } />
+        <Route path="/logs" element={
+          <ProtectedRoute>
+            <Logs />
           </ProtectedRoute>
         } />
       </Routes>

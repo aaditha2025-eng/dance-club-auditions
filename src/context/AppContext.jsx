@@ -14,6 +14,8 @@ export const AppProvider = ({ children }) => {
   });
   
   const [students, setStudents] = useState([]);
+  const [facultyRoles, setFacultyRoles] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
 
   // Save current user to local storage for persistence across reloads
   useEffect(() => {
@@ -27,6 +29,8 @@ export const AppProvider = ({ children }) => {
   // Fetch initial data & setup realtime subscription
   useEffect(() => {
     fetchStudents();
+    fetchFacultyRoles();
+    fetchLogs();
     
     const subscription = supabase
       .channel('public:students')
@@ -44,8 +48,34 @@ export const AppProvider = ({ children }) => {
       })
       .subscribe();
 
+    const facultySubscription = supabase
+      .channel('public:faculty_roles')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_roles' }, payload => {
+        if (payload.eventType === 'INSERT') {
+          setFacultyRoles(prev => {
+            if (prev.find(r => r.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+        } else if (payload.eventType === 'DELETE') {
+          setFacultyRoles(prev => prev.filter(r => r.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    const logsSubscription = supabase
+      .channel('public:activity_logs')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_logs' }, payload => {
+        setActivityLogs(prev => {
+          if (prev.find(l => l.id === payload.new.id)) return prev;
+          return [payload.new, ...prev];
+        });
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(subscription);
+      supabase.removeChannel(facultySubscription);
+      supabase.removeChannel(logsSubscription);
     };
   }, []);
 
@@ -56,6 +86,34 @@ export const AppProvider = ({ children }) => {
       setStudents(data);
     }
     if (error) console.error("Error fetching students:", error);
+  };
+
+  const fetchFacultyRoles = async () => {
+    const { data, error } = await supabase.from('faculty_roles').select('*').order('name');
+    if (data) {
+      setFacultyRoles(data);
+    }
+    if (error) console.error("Error fetching faculty roles:", error);
+  };
+
+  const fetchLogs = async () => {
+    const { data, error } = await supabase.from('activity_logs').select('*').order('created_at', { ascending: false });
+    if (data) {
+      setActivityLogs(data);
+    }
+    if (error) console.error("Error fetching logs:", error);
+  };
+
+  const logActivity = async (message, type) => {
+    // Optimistic log id
+    const tempLog = { id: 'temp-' + Date.now(), message, type, created_at: new Date().toISOString() };
+    setActivityLogs(prev => [tempLog, ...prev]);
+    const { data, error } = await supabase.from('activity_logs').insert([{ message, type }]).select();
+    if (error) {
+      console.error("Error logging activity:", error);
+    } else if (data) {
+      setActivityLogs(prev => prev.map(l => l.id === tempLog.id ? data[0] : l));
+    }
   };
 
   const login = (role, team) => {
@@ -76,7 +134,8 @@ export const AppProvider = ({ children }) => {
       allocatedTeam: null,
       scores: {},
       comments: {},
-      flags: []
+      flags: [],
+      transferRequests: []
     };
     
     // Optimistic UI update
@@ -102,7 +161,8 @@ export const AppProvider = ({ children }) => {
       allocatedTeam: null,
       scores: {},
       comments: {},
-      flags: []
+      flags: [],
+      transferRequests: []
     }));
     
     const { data, error } = await supabase.from('students').insert(formattedStudents).select();
@@ -168,12 +228,60 @@ export const AppProvider = ({ children }) => {
   };
 
   const allocateTeam = async (studentId, team) => {
-    // Optimistic
-    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, allocatedTeam: team } : s));
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    // Log the activity if the team is changing
+    if (student.allocatedTeam !== team) {
+      const studentName = `${student.name} (#${student.chestNo})`;
+      if (student.allocatedTeam && team) {
+        logActivity(`${studentName} was transferred from ${student.allocatedTeam} to ${team}`, 'TRANSFER');
+      } else if (team) {
+        logActivity(`${studentName} was added to ${team}`, 'ADD');
+      }
+    }
+
+    // Optimistic (clear transfer requests on allocation)
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, allocatedTeam: team, transferRequests: [] } : s));
 
     // DB
-    const { error } = await supabase.from('students').update({ allocatedTeam: team }).eq('id', studentId);
+    const { error } = await supabase.from('students').update({ allocatedTeam: team, transferRequests: [] }).eq('id', studentId);
     if (error) console.error("Error allocating team:", error);
+  };
+
+  const requestTransfer = async (studentId, requestingTeam) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    const currentReqs = student.transferRequests || [];
+    if (currentReqs.some(r => r.requestingTeam === requestingTeam)) return;
+
+    const newReqs = [...currentReqs, { requestingTeam, status: 'pending' }];
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, transferRequests: newReqs } : s));
+    const { error } = await supabase.from('students').update({ transferRequests: newReqs }).eq('id', studentId);
+    if (error) console.error("Error requesting transfer:", error);
+  };
+
+  const cancelTransfer = async (studentId, requestingTeam) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    const newReqs = (student.transferRequests || []).filter(r => r.requestingTeam !== requestingTeam);
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, transferRequests: newReqs } : s));
+    const { error } = await supabase.from('students').update({ transferRequests: newReqs }).eq('id', studentId);
+    if (error) console.error("Error canceling transfer:", error);
+  };
+
+  const authorizeTransfer = async (studentId, requestingTeam) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    const newReqs = (student.transferRequests || []).map(r => 
+      r.requestingTeam === requestingTeam ? { ...r, status: 'authorized' } : r
+    );
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, transferRequests: newReqs } : s));
+    const { error } = await supabase.from('students').update({ transferRequests: newReqs }).eq('id', studentId);
+    if (error) console.error("Error authorizing transfer:", error);
   };
 
   const clearData = async () => {
@@ -196,6 +304,25 @@ export const AppProvider = ({ children }) => {
     if (error) console.error("Error deleting students:", error);
   };
 
+  const addFacultyRole = async (name) => {
+    const roleName = name.startsWith('Faculty ') ? name : `Faculty - ${name}`;
+    const { data, error } = await supabase.from('faculty_roles').insert([{ name: roleName }]).select();
+    if (error) {
+      console.error("Error adding faculty role:", error);
+    } else if (data) {
+      setFacultyRoles(prev => [...prev, ...data]);
+    }
+  };
+
+  const deleteFacultyRole = async (id) => {
+    const { error } = await supabase.from('faculty_roles').delete().eq('id', id);
+    if (error) {
+      console.error("Error deleting faculty role:", error);
+    } else {
+      setFacultyRoles(prev => prev.filter(r => r.id !== id));
+    }
+  };
+
   const value = {
     currentUser,
     login,
@@ -208,7 +335,15 @@ export const AppProvider = ({ children }) => {
     toggleFlag,
     allocateTeam,
     clearData,
-    deleteStudents
+    deleteStudents,
+    facultyRoles,
+    addFacultyRole,
+    deleteFacultyRole,
+    activityLogs,
+    requestTransfer,
+    cancelTransfer,
+    authorizeTransfer,
+    logActivity
   };
 
   return (

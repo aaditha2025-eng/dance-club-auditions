@@ -1,12 +1,14 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
-import { LogOut, Users, ClipboardList, BarChart3, ListChecks } from 'lucide-react';
+import { useAppContext, TEAMS } from '../context/AppContext';
+import { LogOut, Users, ClipboardList, BarChart3, ListChecks, History, ShieldAlert } from 'lucide-react';
 
 const Navbar = () => {
   const { currentUser, logout } = useAppContext();
   const navigate = useNavigate();
   const canManageStudents = currentUser?.role === 'Admin' || currentUser?.role === 'Faculty Coordinator';
+  const isTeamLead = TEAMS.includes(currentUser?.role);
+  const canViewLogs = currentUser?.role === 'Admin' || currentUser?.role?.startsWith('Faculty');
 
   const handleLogout = () => {
     logout();
@@ -41,9 +43,19 @@ const Navbar = () => {
         <NavLink to="/teams" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Users size={18} /> Teams
         </NavLink>
+        {isTeamLead && (
+          <NavLink to="/my-team" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldAlert size={18} /> My Team
+          </NavLink>
+        )}
         <NavLink to="/scores" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <BarChart3 size={18} /> Scores
         </NavLink>
+        {canViewLogs && (
+          <NavLink to="/logs" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <History size={18} /> Logs
+          </NavLink>
+        )}
       </div>
 
       <div className="flex-center gap-4">

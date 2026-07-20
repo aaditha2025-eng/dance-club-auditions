@@ -6,7 +6,7 @@ import { BarChart3, Search } from 'lucide-react';
 const CRITERIA = ['Rhythm', 'Expression', 'Technique', 'Overall Impact'];
 
 const ScoresOverview = () => {
-  const { students, currentUser } = useAppContext();
+  const { students, currentUser, facultyRoles } = useAppContext();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -46,9 +46,9 @@ const ScoresOverview = () => {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-secondary)' }}>
               <th style={{ padding: '1rem', width: '250px' }}>Student</th>
-              {TEAMS.map(team => (
+              {[...TEAMS, ...facultyRoles.map(f => f.name)].map(team => (
                 <th key={team} style={{ padding: '1rem', textAlign: 'center' }}>
-                  {team}
+                  {team.startsWith('Faculty - ') ? team.replace('Faculty - ', '') : team === 'Faculty Coordinator' ? 'Faculty' : team}
                 </th>
               ))}
               <th style={{ padding: '1rem', textAlign: 'center', color: 'var(--accent-pink)' }}>Average</th>
@@ -74,17 +74,19 @@ const ScoresOverview = () => {
                     </div>
                   </td>
                   
-                  {TEAMS.map(team => {
+                  {[...TEAMS, ...facultyRoles.map(f => f.name)].map(team => {
                     const teamScores = student.scores?.[team];
                     let teamTotal = 0;
                     let teamCount = 0;
                     
                     if (teamScores) {
-                      Object.values(teamScores).forEach(s => {
-                        teamTotal += s;
-                        teamCount++;
-                        totalScore += s;
-                        scoreCount++;
+                      Object.entries(teamScores).forEach(([k, s]) => {
+                        if (typeof s === 'number') {
+                          teamTotal += s;
+                          teamCount++;
+                          totalScore += s;
+                          scoreCount++;
+                        }
                       });
                     }
                     
