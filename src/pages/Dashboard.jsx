@@ -62,7 +62,7 @@ const Dashboard = () => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           s.chestNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.regNo.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSlot = slot === 'All' ? true : s.chestNo.toUpperCase().endsWith(slot);
+    const matchesSlot = (slot === 'All' || slot === 'Auto') ? true : s.chestNo.toUpperCase().endsWith(slot);
     return matchesSearch && matchesSlot;
   });
 
@@ -118,7 +118,8 @@ const Dashboard = () => {
         <div className="input-group" style={{ margin: 0, width: '150px' }}>
           <label>Active Slot</label>
           <select className="input-field" value={slot} onChange={(e) => setSlot(e.target.value)}>
-            <option value="All">All Slots</option>
+            <option value="All">All Slots (Filter only)</option>
+            <option value="Auto">Auto-Split (By Time)</option>
             {['A', 'B', 'C', 'D', 'E', 'F'].map(s => <option key={s} value={s}>Slot {s}</option>)}
           </select>
         </div>
@@ -128,7 +129,7 @@ const Dashboard = () => {
             <button 
               onClick={() => {
                 if (slot === 'All') {
-                  alert("Please select a specific slot (A, B, C...) before importing!");
+                  alert("Please select 'Auto-Split' or a specific slot (A, B, C...) before importing!");
                   return;
                 }
                 fileInputRef.current?.click();
@@ -148,7 +149,7 @@ const Dashboard = () => {
 
             <button 
               onClick={() => {
-                if (slot === 'All') {
+                if (slot === 'All' || slot === 'Auto') {
                   alert("Please select a specific slot (A, B, C...) before adding a student manually!");
                   return;
                 }

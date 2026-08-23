@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-export const importFromExcel = (file, slot) => {
+export const importFromExcel = (file, defaultSlot) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -10,13 +10,60 @@ export const importFromExcel = (file, slot) => {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
         
-        // Transform based on expected headers: Name, RegNo, DanceForm
-        const students = jsonData.map((row, index) => ({
-          name: row.Name || row.name || `Student ${index+1}`,
-          regNo: row.RegNo || row['Registration Number'] || row.regNo || '',
-          danceForm: row.DanceForm || row['Dance Form'] || 'Open',
-          chestNo: `${index + 1}${slot}` // e.g., 1A, 2A
-        }));
+        if (jsonData.length === 0) return resolve([]);
+
+        // Find Calendly's time column
+        const timeKey = Object.keys(jsonData[0]).find(k => k.toLowerCase().includes('start date') || k.toLowerCase().includes('time'));
+        
+        if (timeKey) {
+          jsonData.sort((a, b) => new Date(a[timeKey]) - new Date(b[timeKey]));
+        }
+
+        const slotLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        let currentSlotIdx = slotLetters.indexOf(defaultSlot) !== -1 ? slotLetters.indexOf(defaultSlot) : 0;
+        let lastTime = null;
+        let chestCounter = 1;
+
+        const getRegNo = (row) => {
+          for (let key in row) {
+            if (key.toLowerCase().includes('reg') && !key.toLowerCase().includes('region')) return row[key];
+          }
+          return '';
+        };
+
+        const getDanceForm = (row) => {
+          for (let key in row) {
+            if (key.toLowerCase().includes('dance form') || key.toLowerCase().includes('style') || key.toLowerCase().includes('genre')) return row[key];
+          }
+          return 'Open';
+        };
+
+        const getName = (row) => row['Invitee Name'] || row.Name || row.name || 'Unknown Participant';
+
+        const students = jsonData.map((row) => {
+          if (timeKey && row[timeKey] && defaultSlot === 'Auto') {
+            const currentTime = new Date(row[timeKey]).getTime();
+            if (lastTime) {
+               // If gap > 2 hours (7200000 ms), switch to next slot letter
+               if (currentTime - lastTime > 7200000) {
+                 currentSlotIdx++;
+                 chestCounter = 1;
+               }
+            }
+            lastTime = currentTime;
+          }
+
+          const assignedSlot = slotLetters[currentSlotIdx] || 'Z';
+          const student = {
+            name: getName(row),
+            regNo: getRegNo(row),
+            danceForm: getDanceForm(row),
+            chestNo: `${chestCounter}${assignedSlot}`
+          };
+          chestCounter++;
+          return student;
+        });
+
         resolve(students);
       } catch (err) {
         reject(err);
