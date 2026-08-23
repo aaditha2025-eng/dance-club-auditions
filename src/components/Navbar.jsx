@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAppContext, TEAMS } from '../context/AppContext';
 import { LogOut, Users, ClipboardList, BarChart3, ListChecks, History, ShieldAlert } from 'lucide-react';
+import logo from '../assets/dance-club-logo.jpg';
 
 const Navbar = () => {
   const { currentUser, logout } = useAppContext();
@@ -19,14 +20,18 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="flex-center gap-4">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{
-            width: '40px', height: '40px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 'bold', fontSize: '1.2rem', color: 'white'
-          }}>
-            D
-          </div>
+          <img 
+            src={logo} 
+            alt="Dance Club Logo" 
+            style={{ 
+              width: '45px', 
+              height: '45px', 
+              objectFit: 'contain',
+              filter: 'invert(1) contrast(1.2)',
+              mixBlendMode: 'screen',
+              borderRadius: '50%'
+            }} 
+          />
           <h2 className="text-gradient" style={{ margin: 0 }}>DanceAuditions</h2>
         </div>
       </div>

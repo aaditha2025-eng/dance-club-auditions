@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, TEAMS } from '../context/AppContext';
+import logo from '../assets/dance-club-logo.jpg';
 
 const Login = () => {
   const { login, facultyRoles } = useAppContext();
@@ -21,16 +22,20 @@ const Login = () => {
     <div className="flex-center" style={{ minHeight: '100vh', padding: '2rem' }}>
       <div className="glass-panel animate-fade-in" style={{ padding: '3rem', width: '100%', maxWidth: '400px' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            width: '64px', height: '64px', borderRadius: '16px',
-            background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 'bold', fontSize: '2rem', color: 'white',
-            margin: '0 auto 1rem auto',
-            boxShadow: 'var(--shadow-neon)'
-          }}>
-            D
-          </div>
+          <img 
+            src={logo} 
+            alt="Dance Club Logo" 
+            style={{ 
+              width: '80px', 
+              height: '80px', 
+              objectFit: 'contain',
+              filter: 'invert(1) contrast(1.2)',
+              mixBlendMode: 'screen',
+              borderRadius: '50%',
+              margin: '0 auto 1rem auto',
+              display: 'block'
+            }} 
+          />
           <h1 className="text-gradient">DanceAuditions</h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Select your role to continue</p>
         </div>
