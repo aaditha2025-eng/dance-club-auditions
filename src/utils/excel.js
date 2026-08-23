@@ -44,8 +44,8 @@ export const importFromExcel = (file, defaultSlot) => {
           if (timeKey && row[timeKey] && defaultSlot === 'Auto') {
             const currentTime = new Date(row[timeKey]).getTime();
             if (lastTime) {
-               // If gap > 2 hours (7200000 ms), switch to next slot letter
-               if (currentTime - lastTime > 7200000) {
+               // If gap > 45 minutes (2700000 ms), switch to next slot letter
+               if (currentTime - lastTime > 2700000) {
                  currentSlotIdx++;
                  chestCounter = 1;
                }
