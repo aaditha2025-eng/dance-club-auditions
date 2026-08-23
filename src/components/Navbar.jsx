@@ -24,8 +24,8 @@ const Navbar = () => {
             src={logo} 
             alt="Dance Club Logo" 
             style={{ 
-              width: '45px', 
-              height: '45px', 
+              width: '60px', 
+              height: '60px', 
               objectFit: 'contain',
               filter: 'invert(1) contrast(1.2)',
               mixBlendMode: 'screen',

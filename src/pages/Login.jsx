@@ -26,8 +26,8 @@ const Login = () => {
             src={logo} 
             alt="Dance Club Logo" 
             style={{ 
-              width: '80px', 
-              height: '80px', 
+              width: '120px', 
+              height: '120px', 
               objectFit: 'contain',
               filter: 'invert(1) contrast(1.2)',
               mixBlendMode: 'screen',
