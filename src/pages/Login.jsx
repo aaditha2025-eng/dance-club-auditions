@@ -16,7 +16,7 @@ const Login = () => {
     }
   };
 
-  const ROLES = ['Admin', ...TEAMS, ...facultyRoles.map(r => r.name)];
+  const ROLES = ['Admin', 'Faculty Coordinator', ...TEAMS, ...facultyRoles.map(r => r.name)];
 
   return (
     <div className="flex-center" style={{ minHeight: '100vh', padding: '2rem' }}>
